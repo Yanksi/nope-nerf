@@ -52,7 +52,13 @@ class Trainer(object):
         self.vis_reprojection_every = cfg['vis_reprojection_every']
         self.nearest_limit = cfg['nearest_limit']
         self.annealing_epochs = cfg['annealing_epochs']
-
+        
+        weights_name_list = ['rgb_weight', 'depth_weight', 'pc_weight', 'rgb_s_weight', 'depth_consistency_weight', 'weight_dist_2nd_loss', 'weight_dist_1st_loss']
+        for weight_name in weights_name_list:
+            if weight_name in cfg:
+                setattr(self, weight_name, cfg[weight_name])
+            else:
+                setattr(self, weight_name, [0, 0])
 
         self.loss = Loss(cfg)
 
@@ -125,7 +131,9 @@ class Trainer(object):
             rgb_pred = rgb_pred.view(h, w, 3).detach().cpu().numpy()
             img_out = (rgb_pred * 255).astype(np.uint8)
             depth_pred_out = depth_pred.view(h, w).detach().cpu().numpy()
-            imageio.imwrite(os.path.join(out_render_path,'%04d_depth.png'% img_idx), depth_pred_out)
+            depth_pred_out_normalized = (depth_pred_out - depth_pred_out.min()) / (depth_pred_out.max() - depth_pred_out.min())
+            depth_pred_out_normalized = (depth_pred_out_normalized * 255).astype(np.uint8)
+            imageio.imwrite(os.path.join(out_render_path,'%04d_depth.png'% img_idx), depth_pred_out_normalized)
             
             img1 = Image.fromarray(
                 (img_out).astype(np.uint8)
@@ -245,7 +253,20 @@ class Trainer(object):
             camera_mat = camera_mat_gt
         
         # Sample pixels
-        ray_idx = torch.randperm(h*w,device=device)[:n_points]
+        # static_pixels_x, static_pixels_y = torch.where(data["img.mask"][0] != 0)
+        # n_static_pixels = static_pixels_x.shape[0]
+        # ray_idx = torch.randperm(n_static_pixels,device=device)[:n_points]
+        # rgb_gt = img[:, :, static_pixels_x[ray_idx], static_pixels_y[ray_idx]]
+        
+        if "img.mask" in data:
+            mask = data["img.mask"]
+            common_mask = torch.min(mask, dim=0)[0]
+            mask_flat = common_mask.view(h*w)
+            static_pixel_idx = torch.where(mask_flat != 0)[0].to(device)
+            samples = torch.randperm(static_pixel_idx.shape[0],device=device)[:n_points]
+            ray_idx = static_pixel_idx[samples]
+        else:
+            ray_idx = torch.randperm(h*w,device=device)[:n_points]
         img_flat = img.view(batch_size, 3, h*w).permute(0,2,1)
         rgb_gt = img_flat[:,ray_idx]
         p_full = arange_pixels((h, w), batch_size, device=device)[1]

@@ -277,6 +277,15 @@ def load_depths(image_list, datadir, H=None, W=None):
         else:
             depths.append(depth)
     return np.stack(depths)
+
+def load_masks(mask_list, datadir):
+    masks = []
+    for image_name in mask_list:
+        mask_path = os.path.join(datadir, 'masks', image_name)
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        masks.append(mask)
+    return np.stack(masks)
+
 def load_images(image_list, datadir):
     images = []
 

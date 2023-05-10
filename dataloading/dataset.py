@@ -7,7 +7,7 @@ from PIL import Image
 import numpy as np
 import imageio
 import cv2
-from dataloading.common import _load_data, recenter_poses, spherify_poses, load_depths_npz, load_gt_depths
+from dataloading.common import _load_data, recenter_poses, spherify_poses, load_depths_npz, load_gt_depths, load_masks
 logger = logging.getLogger(__name__)
 
 class DataField(object):
@@ -18,7 +18,7 @@ class DataField(object):
                  use_DPT=False, scene_name=[' '], mode='train', spherify=False, 
                  load_ref_img=False,customized_poses=False,
                  customized_focal=False,resize_factor=2, depth_net='dpt',crop_size=0, 
-                 random_ref=False,norm_depth=False,load_colmap_poses=True, sample_rate=8, **kwargs):
+                 random_ref=False,norm_depth=False,load_colmap_poses=True, sample_rate=8, with_mask=False, **kwargs):
         """load images, depth maps, etc.
         Args:
             model_path (str): path of dataset
@@ -43,6 +43,7 @@ class DataField(object):
         self.transform = transform
         self.with_camera = with_camera
         self.with_depth = with_depth
+        self.with_mask = with_mask
         self.use_DPT = use_DPT
         self.mode = mode
         self.ref_img = load_ref_img
@@ -102,8 +103,11 @@ class DataField(object):
         i_train = np.array([i for i in ids if i not in i_test])
         self.i_train = i_train
         self.i_test = i_test
+        mask_list = [img_name + '.png' for img_name in img_names]
         image_list_train = [img_names[i] for i in i_train]
+        mask_list_train = [img_names[i] + '.png' for i in i_train]
         image_list_test = [img_names[i] for i in i_test]
+        mask_list_test = [img_names[i] + '.png' for i in i_test]
         print('test set: ', image_list_test)
 
         if customized_poses:
@@ -130,6 +134,8 @@ class DataField(object):
                 self.dpt_depth = load_depths_npz(image_list_train, pred_depth_path, norm=norm_depth)
             if with_depth:
                 self.depth = load_gt_depths(image_list_train, load_dir, crop_ratio=crop_ratio)
+            if with_mask:
+                self.mask = load_masks(mask_list_train, load_dir)
             self.img_list = image_list_train
         elif mode=='eval':
             self.imgs = imgs[i_test]
@@ -138,6 +144,8 @@ class DataField(object):
                 self.c2ws_colmap = c2ws_colmap[i_test]
             if with_depth:
                 self.depth = load_gt_depths(image_list_test, load_dir, crop_ratio=crop_ratio)
+            if with_mask:
+                self.mask = load_masks(mask_list_test, load_dir)
             self.N_imgs = len(i_test)
             self.img_list = image_list_test
         elif mode=='all':
@@ -150,6 +158,8 @@ class DataField(object):
                 self.dpt_depth = load_depths_npz(img_names, pred_depth_path,  norm=norm_depth)
             if with_depth:
                 self.depth = load_gt_depths(img_names, load_dir, crop_ratio=crop_ratio)
+            if with_mask:
+                self.mask = load_masks(mask_list, load_dir)
             self.img_list = img_names
 
        
@@ -195,6 +205,8 @@ class DataField(object):
     def load_DPT_depth(self, idx, data={}):
         depth_dpt = self.dpt_depth[idx]
         data['dpt'] = depth_dpt
+    def load_mask(self, idx, data={}):
+        data['mask'] = self.mask[idx]
 
     def load_camera(self, idx, data={}):
         data['camera_mat'] = self.K
@@ -218,6 +230,8 @@ class DataField(object):
                 self.load_depth(idx_img, data)
             if self.dpt_depth is not None:
                 self.load_DPT_depth(idx_img, data)
+            if self.with_mask:
+                self.load_mask(idx_img, data)
         if self.with_camera:
             self.load_camera(idx_img, data)
         

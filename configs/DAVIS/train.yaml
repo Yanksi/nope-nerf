@@ -1,0 +1,16 @@
+depth:
+  type: None
+pose:
+  learn_pose: True
+dataloading:
+  path: data/DAVIS
+  scene: ['train']
+  customized_focal: False
+  random_ref: 1
+  learn_pose: True
+  with_mask: True
+training:
+  out_dir:  out/DAVIS/train2
+  auto_scheduler: True
+extract_images:
+  resolution: [540, 960]

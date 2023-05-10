@@ -196,9 +196,9 @@ def train(cfg):
     scale_dict = {}
     shift_dict = {}
     gt_poses = train_dataset['img'].c2ws.to(device)
-    # for epoch_it in tqdm(range(epoch_start+1, exit_after), desc='epochs'):
-    while epoch_it < (scheduling_start + scheduling_epoch):
-        epoch_it +=1
+    for epoch_it in tqdm(range(epoch_it+1, scheduling_start + scheduling_epoch), desc='epochs'):
+    # while epoch_it < (scheduling_start + scheduling_epoch):
+        # epoch_it +=1
         L2_loss_epoch = []
         pc_loss_epoch = []
         rgb_s_loss_epoch = []
@@ -213,8 +213,8 @@ def train(cfg):
             scale_dict['view %02d' % (idx)] = loss_dict['scale']
             shift_dict['view %02d' % (idx)] = loss_dict['shift']
             if print_every > 0 and (it % print_every) == 0:
-                tqdm.write('[Epoch %02d] it=%03d, loss=%.8f, time=%.4f'
-                            % (epoch_it, it, loss, time.time() - t0b))
+                # tqdm.write('[Epoch %02d] it=%03d, loss=%.8f, time=%.4f'
+                #             % (epoch_it, it, loss, time.time() - t0b))
                 logger_py.info('[Epoch %02d] it=%03d, loss=%.4f, time=%.4f'
                             % (epoch_it, it, loss, time.time() - t0b))
                 t0b = time.time()
@@ -278,7 +278,7 @@ def train(cfg):
             c2ws_est_aligned = align_ate_c2b_use_a2b(learned_poses, gt_poses)
             ate = compute_ATE(gt_poses.cpu().numpy(), c2ws_est_aligned.cpu().numpy())
             rpe_trans, rpe_rot = compute_rpe(gt_poses.cpu().numpy(), c2ws_est_aligned.cpu().numpy())
-            tqdm.write('{0:6d} ep: Train: ATE: {1:.3f} RPE_r: {2:.3f}'.format(epoch_it, ate, rpe_rot* 180 / np.pi))
+            # tqdm.write('{0:6d} ep: Train: ATE: {1:.3f} RPE_r: {2:.3f}'.format(epoch_it, ate, rpe_rot* 180 / np.pi))
             eval_dict = {
                 'ate_trans': ate,
                 'rpe_trans': rpe_trans*100,
@@ -289,7 +289,7 @@ def train(cfg):
         if (eval_img_every>0 and (epoch_it % eval_img_every) == 0):    
             L2_loss_mean = np.mean(L2_loss_epoch)
             psnr = mse2psnr(L2_loss_mean)
-            tqdm.write('{0:6d} ep: Train: PSNR: {1:.3f}'.format(epoch_it, psnr))
+            # tqdm.write('{0:6d} ep: Train: PSNR: {1:.3f}'.format(epoch_it, psnr))
             logger.add_scalar('train/psnr', psnr, it)
             
         if not auto_scheduler:

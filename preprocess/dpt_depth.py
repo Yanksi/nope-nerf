@@ -37,12 +37,13 @@ def dpt_depth(cfg, depth_save_dir):
         img_normalised = data.get('img.normalised_img').to(device)
         idx = data.get('img.idx')
         img_name = img_list[idx]
-        depth = DPT_model(img_normalised)
-        np.savez(os.path.join(depth_save_dir, 'depth_{}.npz'.format(img_name.split('.')[0])), pred=depth.detach().cpu())
-        imageio.imwrite(os.path.join(depth_save_dir, '{}.png'.format(img_name.split('.')[0])), depth[0].detach().cpu())
+        depth = DPT_model(img_normalised).detach().cpu()
+        np.savez(os.path.join(depth_save_dir, 'depth_{}.npz'.format(img_name.split('.')[0])), pred=depth)
+        depth_normalised = ((depth - depth.min()) / (depth.max() - depth.min()))[0].numpy()
+        depth_normalised = (depth_normalised * 255).astype(np.uint8)
+        imageio.imwrite(os.path.join(depth_save_dir, '{}.png'.format(img_name.split('.')[0])), depth_normalised)
         
- 
-                                                                
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser(
         description='Preprocess.'
